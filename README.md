@@ -1,0 +1,3 @@
+# Demographics of EV Charging Station Placement
+
+Electric vehicles are the future — but for whom? This project examines the locations of more than 28,000 EV charging stations in the U.S., comparing their frequency to the median household income of the county they are located in. On the website, I present state-by-state maps of this relationship, as well as a statistical analysis of the nationwide data. Though not reaching the level of statistical significance, I found a slight positive correlation between median income and charging stations in a county, meaning that, generally, counties with a higher median income receive a higher share of EV infrastructure investment.
