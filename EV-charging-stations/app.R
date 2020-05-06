@@ -9,6 +9,7 @@ library(readr)
 library(broom)
 library(gt)
 library(shinythemes)
+library(plotly)
 options(scipen=999)
 
 ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
@@ -47,7 +48,7 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                   p("more description"),
                                   selectInput(inputId = "state",
                                               label = "State",
-                                              choices = state.abb, selected = "MA"),
+                                              choices = state.name, selected = "Massachusetts"),
                                   
                                   radioButtons(inputId = "attribute", 
                                                label = "Demographic Attribute",
@@ -68,7 +69,7 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                                         between median household income in a county and the number
                                                         of EV stations built there. The resulting best-fit line is
                                                         plotted."),
-                                                        plotOutput("stats"),
+                                                        plotlyOutput("stats"),
                                               h2("Statistical Relationship"),
                                               h4("Standard Linear Regression"),
                                                 p("This table shows my average coefficient, or the slope of the regression
@@ -106,22 +107,22 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                      fuel stations, including Biodiesel (B20 and above), Compressed Natural Gas (CNG), Electric, 
                                      Ethanol (E85), Hydrogen, Liquefied Natural Gas (LNG), and Propane (LPG), I focused on electric, 
                                      as that has been seeing significant investment in recent years. The data, which is updated 
-                                     regularly, comes from", 
-                                     a(href = 'https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/', 'here.')),
+                                     regularly, comes from ", 
+                                     a(href = 'https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/', 'here', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
                                     p("In addition, I drew demographic data from the U.S. Census Bureau's 2018 American Communities
                                       Survey, which is a limited sample version of the Census conducted each year. More information
-                                      on the ACS survey can be found",
-                                    a(href = 'https://www.census.gov/programs-surveys/acs', 'here.'),
+                                      on the ACS survey can be found ",
+                                    a(href = 'https://www.census.gov/programs-surveys/acs', 'here', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
                                    br(),
                                    h2("Contact"),
                                    p("My name is James Bikales, I am a sophomore at Harvard College studying Government 
                                      and East Asian Studies. I'm learning R for its applications in data journalism and 
-                                     political science. Contact me with questions or comments at",
-                                     a("jbikales@college.harvard.edu", href = "mailto: jbikales@college.harvard.edu"),"."),
+                                     political science. Contact me with questions or comments at ",
+                                     a("jbikales@college.harvard.edu", href = "mailto: jbikales@college.harvard.edu", .noWS = "outside"),".", .noWS = c("after-begin", "before-end")),
                                    p("This project was created for my", a(href = 'https://www.davidkane.info/files/gov_1005_spring_2020.html', 'Gov 1005'),
-                                     "final project. The code can be found",
-                                     a(href = 'https://github.com/jbikales/EV-Charging-Stations', 'here.'))
-                          )))
+                                     "final project. The code can be found ",
+                                     a(href = 'https://github.com/jbikales/EV-Charging-Stations', 'here', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end"))
+                          ))
 
 server <- function(input, output) {
     
@@ -146,11 +147,11 @@ server <- function(input, output) {
         
     })
     
-    output$stats <- renderPlot({
+    output$stats <- renderPlotly({
  
         reg_data <- read_rds("clean-data/regression.rds") 
             
-            ggplot(data = reg_data, mapping = aes(median_household_income, number_stations)) + 
+            plot <- ggplot(data = reg_data, mapping = aes(median_household_income, number_stations)) + 
             geom_point() +
             geom_smooth(method='lm') +
             labs(title = "Relationship Between Median Household Income of U.S. Counties \n and Number of EV Charging Stations",
@@ -159,6 +160,8 @@ server <- function(input, output) {
                  ) +
             xlab("Median Household Income") +
             ylab("Number of EV Charging Stations")
+            
+            ggplotly(plot)
     })
     
     output$stats_table <- renderTable({

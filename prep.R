@@ -9,7 +9,7 @@ library(broom)
 library(gt)
 options(scipen=999)
 
-census_api_key("7501b863e3d3c96200d101891c3df2191d2a98d0")
+census_api_key("7501b863e3d3c96200d101891c3df2191d2a98d0", install = TRUE, overwrite=TRUE)
 
 ev_data_raw <- GET("https://developer.nrel.gov/api/alt-fuel-stations/v1.csv?api_key=cL01al61HtSmjbeVd83mIteBv5EXivGyen42Dj59&fuel_type=ELEC")
 ev_raw <- content(ev_data_raw)
@@ -18,8 +18,8 @@ ev_data <- ev_raw %>%
   select("Latitude", "Longitude", "State") %>% 
   filter(Longitude < 0)
 
-state_data <- tibble(state.abb, state.region) %>% 
-  rename(State = state.abb)
+state_data <- tibble(state.name, state.region) %>% 
+  rename(State = state.name)
 
 ev_all_states <- right_join(ev_data, state_data, by = "State")
 
@@ -39,11 +39,11 @@ census_incomes <- function(state){
     select(county,State, median_household_income, geometry)
 }
 
-for(i in state.abb){
+for(i in state.name){
   census_incomes(i)
 }
 
-census_incomes_list <- lapply(state.abb,census_incomes)
+census_incomes_list <- lapply(state.name,census_incomes)
 census_incomes_data <- do.call(rbind, census_incomes_list)
 
 # problem here is that when I join the datasets together, the counties that have no stations are also joined to the tbl. Then when I go to count, it counts those as if they have 1 charging station.
