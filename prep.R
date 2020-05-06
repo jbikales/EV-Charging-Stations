@@ -34,28 +34,31 @@ census_incomes <- function(state){
                      output = "wide",
                      geometry = TRUE) %>% 
     rename(county = NAME) %>%
-    rename(median_household_income = B19013_001E) %>% 
-    select(county, median_household_income, geometry)
+    rename(median_household_income = B19013_001E) %>%
+    mutate(State = state) %>% 
+    select(county,State, median_household_income, geometry)
 }
 
 for(i in state.abb){
   census_incomes(i)
 }
 
-census_incomes_data <- census_incomes(state.abb)
+census_incomes_list <- lapply(state.abb,census_incomes)
+census_incomes_data <- do.call(rbind, census_incomes_list)
 
 # problem here is that when I join the datasets together, the counties that have no stations are also joined to the tbl. Then when I go to count, it counts those as if they have 1 charging station.
 
-combined <- st_join(census_incomes_data, ev_data_sf, left = TRUE)
+combined <- st_join(census_incomes_data, (ev_data_sf %>% select(!State)), left = TRUE)
 
 write_rds(combined, "EV-charging-stations/clean-data/combined.rds")
 
 combined_incomes_count <- as.data.frame(combined) %>% 
+  # create an indicator variable for whether or not the observation is a station 
+  mutate(station = ifelse(is.na(Latitude),0,1)) %>% 
   select(-geometry) %>% 
-  group_by(county) %>% 
-  count() %>% 
-  mutate(number_stations = n) %>% 
-  select(county, number_stations)
+  group_by(county, State) %>% 
+  summarize(number_stations = sum(station)) %>% 
+  select(county,State, number_stations)
 
 census <- as.data.frame(census_incomes_data) %>% 
   select(county, median_household_income)

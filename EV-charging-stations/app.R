@@ -56,6 +56,8 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                               
                               mainPanel(
                                   plotOutput("graph1"),
+                                  p("Source: American Communities Survey 2018 and National Renewable Energy Laboratory database")
+                                  
                               )
                           )),
                           
@@ -138,9 +140,9 @@ server <- function(input, output) {
             geom_point(aes(Longitude, Latitude), size = 1, color = "green") +
             labs(title = paste("EV charging stations in", input$state, sep = " "), 
                  subtitle = "Counties by Median Household Income", 
-                 fill = "Median Household Income", 
-                 caption = "American Communities Survey 2018 and \n National Renewable Energy Laboratory database"
-            )
+                 fill = "Median Household Income" 
+            ) +
+            theme_void()
         
     })
     
