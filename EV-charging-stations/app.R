@@ -10,6 +10,7 @@ library(broom)
 library(gt)
 library(shinythemes)
 library(plotly)
+library(leaflet)
 options(scipen=999)
 
 ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
@@ -52,11 +53,16 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                   
                                   radioButtons(inputId = "attribute", 
                                                label = "Demographic Attribute",
-                                               choices = list("Median Income" = 1, "Percent Rural - TBD" = 2, "Vehicles Per Capita - TBD" = 3, "Total Population - TBD" = 4, "Educational Attainment - TBD" = 5), selected = 1)
+                                               choices = list("Median Income" = 1, 
+                                                              "Percentage of Rural Residents" = 2, 
+                                                              "Vehicles Per Capita" = 3, 
+                                                              "Total Population" = 4, 
+                                                              "Percentage of Adults with Bachelor's Degree or Higher" = 5), 
+                                               selected = 1)
                               ),
                               
                               mainPanel(
-                                  plotOutput("graph1"),
+                                  leafletOutput("state_maps"),
                                   p("Source: American Communities Survey 2018 and National Renewable Energy Laboratory database")
                                   
                               )
@@ -93,7 +99,7 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                    h2("Background"),
                                    p("As an avid electric vehicle driver, I'm always happy to find a charging station
                                      to make sure I have enough charge to make it to my destination. But looking for a station
-                                     tends to conjure up the image of a glitzy mall, not an area with high poverty. Yet these
+                                     tends to conjure up the image of a glitzy mall, not an highly impoverished neighborhood. Yet these
                                      are where the stations need to be. Not only will this improve living conditions, help the 
                                      environment, and drive investment in these areas, the people living there could benefit most
                                      from these stations. They often have long commutes or cannot afford gas."), 
@@ -126,24 +132,62 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
 
 server <- function(input, output) {
     
-    output$graph1 <- renderPlot({
+    output$state_maps <- renderLeaflet({
         
         # load data in from rds in shiny folder
         
-        combined_data <- read_rds("clean-data/combined.rds")
+        ev_base <- read_rds("clean-data/ev_data_sf.rds") %>% 
+            filter(state.name == as.character(input$state))
         
-        combined_data %>% 
-            
-            filter(State == input$state) %>% 
-            
-            ggplot(aes(fill = median_household_income)) +
-            geom_sf() +
-            geom_point(aes(Longitude, Latitude), size = 1, color = "green") +
-            labs(title = paste("EV charging stations in", input$state, sep = " "), 
-                 subtitle = "Counties by Median Household Income", 
-                 fill = "Median Household Income" 
-            ) +
-            theme_void()
+        incomes_base <- read_rds("clean-data/census_incomes_data.rds") %>% 
+            filter(State == as.character(input$state))
+        
+        rural_base <- read_rds("clean-data/census_rural_data.rds") %>% 
+            filter(State == as.character(input$state))
+        
+        pop_base <- read_rds("clean-data/census_pop_data.rds") %>% 
+            filter(State == as.character(input$state))
+        
+        cars_base <- read_rds("clean-data/census_cars_data.rds") %>% 
+            filter(State == as.character(input$state))
+        
+        education_base <- read_rds("clean-data/census_education_data.rds") %>% 
+            filter(State == as.character(input$state))
+        
+        pal <- colorNumeric(palette = "Purples", 
+                            domain = NULL)
+        
+        state_data <- switch(input$attribute,
+                        '1' = incomes_base,
+                        '2' = rural_base,
+                        '3' = cars_base,
+                        '4' = pop_base,
+                        '5' = education_base)      
+        
+        census_data <- switch(input$attribute, 
+                       '1' = incomes_base$median_household_income,
+                       '2' = rural_base$prop_rural,
+                       '3' = cars_base$cars_per_capita,
+                       '4' = pop_base$total_pop,
+                       '5' = education_base$percent_bachelors)
+        
+        leaflet(options = leafletOptions(dragging = TRUE,
+                                                     minZoom = 4,
+                                                     maxZoom = 20)) %>%
+            addProviderTiles("CartoDB") %>%
+            #addMarkers(data = ev_base,
+                      # label = ~`State`) %>% 
+            addPolygons(data = state_data, 
+                        weight = 1, 
+                        color = "#000000",
+                        fillColor = ~pal(census_data),
+                        fillOpacity = 0.6) %>% 
+            addLegend("bottomleft",
+                      pal=pal,
+                      values = census_data,
+                      title="Median Household Income",
+                      labFormat = labelFormat(prefix = "$"))
+       
         
     })
     
