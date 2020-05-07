@@ -171,8 +171,6 @@ write_rds(census_education_data, "EV-charging-stations/clean-data/census_educati
 
 combined <- st_join(census_incomes_data, (ev_data_sf %>% select(!State)), left = TRUE)
 
-write_rds(combined, "EV-charging-stations/clean-data/combined.rds")
-
 combined_incomes_count <- as.data.frame(combined) %>% 
   # create an indicator variable for whether or not the observation is a station 
   mutate(station = ifelse(is.na(Latitude),0,1)) %>% 
