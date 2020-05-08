@@ -44,9 +44,9 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                  tabPanel("Graphs by State",
                           sidebarLayout(
                               sidebarPanel(
-                                  h4("About"),
-                                  p("decription"),
-                                  p("more description"),
+                                  h4("Map of Charging Stations"),
+                                  p("Visualize the demographics of EV charging station placement."),
+                                  p("Select your desired state and toggle the demographic attribute"),
                                   selectInput(inputId = "state",
                                               label = "State",
                                               choices = state.name, selected = "Massachusetts"),
@@ -62,8 +62,10 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                               ),
                               
                               mainPanel(
+                                  h4(textOutput("map_title")),
                                   leafletOutput("state_maps"),
-                                  p("Source: American Communities Survey 2018 and National Renewable Energy Laboratory database")
+                                  h6("Source: U.S. Census 2010, American Communities Survey 2018, and 
+                                     National Renewable Energy Laboratory database")
                                   
                               )
                           )),
@@ -77,24 +79,33 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                                         plotted."),
                                                         plotlyOutput("stats"),
                                               h2("Statistical Relationship"),
-                                              h4("Standard Linear Regression"),
-                                                p("This table shows my average coefficient, or the slope of the regression
-                                                  line, along with a 95% confidence interval. The estimate value indicates
-                                                  that there is a slight positive correlation between median household income
-                                                  of a county and the number of charging stations there. For every $1 increase 
-                                                  in median income, there are 0.00083 more stations in that county. While that
-                                                  might seem small, if you hypothetically consider a $10,000 increase in median 
-                                                  household income, that means the county gains around 8 new charging stations."),
+                                              h4("Linear Regression and Interpretation"),
                                                         tableOutput("stats_table"),
-                                             h4("Scaled Linear Regression"),
-                                                p("This table shows the same figures, but with both axes scaled, so it demonstrates
-                                                  percent change. Here, the coefficient demonstrates that for each one percent increase
-                                                  in median household income, there are 0.24 percent more charging stations in that
-                                                  county. While this is strong('not statistically significant'**'), it does show a slight
-                                                  positive correlation."),
-                                                        tableOutput("stats_table_scaled"))
-                                       )
-                                   ,
+                                             p("This table shows my average coefficient, or the slope of the regression
+                                                  line, along with a 95% confidence interval. Because this was not a randomized
+                                                  experiment, we are not able to use this model to determine a causal relationship
+                                                  or predict the number of stations in any given county. There are so many possible confounding
+                                                  variables that we cannot say for certain that a higher median household income is causing a county to have
+                                                  more charging stations; in fact, it could even be the opposite, that a higher number
+                                                  of stations is attracting wealthier people to the area and increasing the median household income."),
+                                             p("We can, however, use it to compare the number of stations in counties of differing income 
+                                                 levels. For example, using the coefficient from the table, we would expect a U.S. county with
+                                                 a median household income of $50,000 to have about __ charging stations, while a county with a median
+                                                 household income of $100,000 to have about __ charging stations. Even for counties with a less
+                                                 stark difference in median income, such as $30,000 and $40,000, the county with a median income of 
+                                                 $40,000 would have approximately __ more charging stations."),
+                                             p("This does demonstrate that counties with a higher median income seem to be receiving more investment
+                                               in electric vehicle infrastructure. While we cannot say for certain that the increase in EV investment
+                                               is caused by the wealth of the county, it is an important consideration for public officials to be
+                                               aware of when determining how best to distribute public dollars for EV projects.")
+                                             # h4("Scaled Linear Regression"),
+                                             #    p("This table shows the same figures, but with both axes scaled, so it demonstrates
+                                             #      percent change. Here, the coefficient demonstrates that for each one percent increase
+                                             #      in median household income, there are 0.24 percent more charging stations in that
+                                             #      county. While this is strong('not statistically significant'**'), it does show a slight
+                                             #      positive correlation."),
+                                             #            tableOutput("stats_table_scaled"))
+                                       )),
                           tabPanel("About",
                                    h2("Background"),
                                    p("As an avid electric vehicle driver, I'm always happy to find a charging station
@@ -185,19 +196,48 @@ server <- function(input, output) {
             addLegend("bottomleft",
                       pal=pal,
                       values = census_data,
-                      title="Median Household Income",
-                      labFormat = labelFormat(prefix = "$"))
+                      title = case_when(input$attribute == '1' ~ "Median Household Income",
+                                        input$attribute == '2' ~ "Percentage of \n Rural Residents",
+                                        input$attribute == '3' ~ "Cars Per Capita",
+                                        input$attribute == '4' ~ "Total Population",
+                                        input$attribute == '5' ~ "Percentage of Adults \n with Bachelor's Degree \n or Higher"),
+                      labFormat = labelFormat(prefix = case_when(input$attribute == '1' ~ "$",
+                                                                 input$attribute == '2' ~ "",
+                                                                 input$attribute == '3' ~ "",
+                                                                 input$attribute == '4' ~ "",
+                                                                 input$attribute == '5' ~ ""),
+                                              suffix = case_when(input$attribute == '1' ~ "",
+                                                                 input$attribute == '2' ~ "%",
+                                                                 input$attribute == '3' ~ "",
+                                                                 input$attribute == '4' ~ "",
+                                                                 input$attribute == '5' ~ "%")))
        
         
     })
     
+    output$map_title <- renderText ({
+        paste("Map of EV Chargers in", 
+              input$state, 
+              "With", 
+              case_when(input$attribute == '1' ~ "Median Household Income",
+                        input$attribute == '2' ~ "Percentage of Rural Residents",
+                        input$attribute == '3' ~ "Cars Per Capita",
+                        input$attribute == '4' ~ "Total Population",
+                        input$attribute == '5' ~ "Percentage of Adults with Bachelor's Degree or Higher"),
+              "In Each County")
+    })
+    
     output$stats <- renderPlotly({
  
-        reg_data <- read_rds("clean-data/regression.rds") 
-            
-            plot <- ggplot(data = reg_data, mapping = aes(median_household_income, number_stations)) + 
+        reg_base <- read_rds("clean-data/regression.rds")  
+
+            plot <- ggplot(data = reg_base, 
+                           aes(x = median_household_income, y = number_stations,
+                               text = paste("County:", county, "<br>",
+                                                      "Median Income:", median_household_income, "<br>",
+                                                      "Stations:", number_stations))) + 
             geom_point() +
-            geom_smooth(method='lm') +
+            geom_smooth(mapping = aes(x = median_household_income, y = number_stations), method = 'lm', inherit.aes = FALSE) +
             labs(title = "Relationship Between Median Household Income of U.S. Counties \n and Number of EV Charging Stations",
                  subtitle = "Line of Best Fit Shown",
                  caption = "American Communities Survey 2018 and \n National Renewable Energy Laboratory database"
@@ -205,7 +245,7 @@ server <- function(input, output) {
             xlab("Median Household Income") +
             ylab("Number of EV Charging Stations")
             
-            ggplotly(plot)
+            ggplotly(plot, tooltip = c("text"))
     })
     
     output$stats_table <- renderTable({
@@ -228,25 +268,26 @@ server <- function(input, output) {
         
     })
     
-    output$stats_table_scaled <- renderTable({
+    
+    # output$stats_table_scaled <- renderTable({
         
-        reg_table_scaled <- read_rds("clean-data/regression.rds") 
+        # reg_table_scaled <- read_rds("clean-data/regression.rds") 
         
-        reg_lm_scaled <- lm(formula = scale(number_stations) ~ scale(median_household_income),
-                     data = reg_table_scaled)
+       #  reg_lm_scaled <- lm(formula = scale(number_stations) ~ scale(median_household_income),
+       #              data = reg_table_scaled)
         
-        reg_tidy_scaled <- reg_lm_scaled %>% 
-            tidy(conf.int = TRUE) %>% 
-            select(estimate, conf.low, conf.high) %>%
-            rename(
-                "Coefficient" = estimate,
-                "Lower Bound" = conf.low,
-                "Upper Bound" = conf.high) %>% 
-            tail(1)
+       # reg_tidy_scaled <- reg_lm_scaled %>% 
+       #     tidy(conf.int = TRUE) %>% 
+       #     select(estimate, conf.low, conf.high) %>%
+       #     rename(
+       #         "Coefficient" = estimate,
+       #         "Lower Bound" = conf.low,
+       #         "Upper Bound" = conf.high) %>% 
+        #    tail(1)
         
-        gt(reg_tidy_scaled)
+       # gt(reg_tidy_scaled)
         
-    })
+   # })
     
     output$all_stations_graphic <- renderImage({
         list(src = "all_stations.png",
