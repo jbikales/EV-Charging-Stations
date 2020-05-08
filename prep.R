@@ -19,10 +19,10 @@ ev_data <- ev_raw %>%
   select("Latitude", "Longitude", "State") %>% 
   filter(Longitude < 0) 
 
-state_data <- tibble(state.abb, state.name) %>% 
+state_names <- tibble(state.abb, state.name) %>% 
   rename(State = state.abb)
 
-ev_all_states <- right_join(ev_data, state_data, by = "State")
+ev_all_states <- right_join(ev_data, state_names, by = "State")
 
 ev_data_sf <- ev_all_states %>% 
   st_as_sf(coords = c("Longitude","Latitude"), crs = 4269, remove = FALSE) 
@@ -189,9 +189,9 @@ write_rds(reg_data, "EV-charging-stations/clean-data/regression.rds")
 ev_data_sf %>%
   ggplot() + 
   geom_point(aes(Longitude, Latitude), size = 0.3, color = "forestgreen") +
-  labs(title = "Locations of all E.V. Charging Stations \n in the United States",
+  labs(title = "Locations of all E.V. Charging Stations in the United States",
        subtitle = "Including Alaska and Hawaii",
-       caption = "American Communities Survey 2018 and \n National Renewable Energy Laboratory database"
+       caption = "Source: National Renewable Energy Laboratory database"
   ) +
   theme_void() 
 

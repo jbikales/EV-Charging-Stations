@@ -44,9 +44,8 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                  tabPanel("Graphs by State",
                           sidebarLayout(
                               sidebarPanel(
-                                  h4("Map of Charging Stations"),
-                                  p("Visualize the demographics of EV charging station placement."),
-                                  p("Select your desired state and toggle the demographic attribute"),
+                                  h4("Interactive Map"),
+                                  p("Toggle your desired state and demographic attribute."),
                                   selectInput(inputId = "state",
                                               label = "State",
                                               choices = state.name, selected = "Massachusetts"),
@@ -165,9 +164,6 @@ server <- function(input, output) {
         education_base <- read_rds("clean-data/census_education_data.rds") %>% 
             filter(State == as.character(input$state))
         
-        pal <- colorNumeric(palette = "Purples", 
-                            domain = NULL)
-        
         state_data <- switch(input$attribute,
                         '1' = incomes_base,
                         '2' = rural_base,
@@ -182,19 +178,28 @@ server <- function(input, output) {
                        '4' = pop_base$total_pop,
                        '5' = education_base$percent_bachelors)
         
+        pal <- colorNumeric("YlOrRd", 
+                            domain = census_data)
+        
         leaflet(options = leafletOptions(dragging = TRUE,
                                                      minZoom = 4,
                                                      maxZoom = 20)) %>%
             addProviderTiles("CartoDB") %>%
-            #addMarkers(data = ev_base,
-                      # label = ~`State`) %>% 
+            addCircles(data = ev_base,
+                      radius = 5,
+                      fillColor = "black",
+                      stroke = FALSE, 
+                      fillOpacity = 1) %>% 
             addPolygons(data = state_data, 
-                        weight = 1, 
+                        weight = 0.5, 
                         color = "#000000",
                         fillColor = ~pal(census_data),
-                        fillOpacity = 0.6) %>% 
+                        fillOpacity = 0.7,
+                        highlightOptions = highlightOptions(color = "white", weight = 2,
+                                                            bringToFront = TRUE),
+                        label = state_data$county) %>% 
             addLegend("bottomleft",
-                      pal=pal,
+                      pal = pal,
                       values = census_data,
                       title = case_when(input$attribute == '1' ~ "Median Household Income",
                                         input$attribute == '2' ~ "Percentage of \n Rural Residents",
@@ -236,7 +241,7 @@ server <- function(input, output) {
                                text = paste("County:", county, "<br>",
                                                       "Median Income:", median_household_income, "<br>",
                                                       "Stations:", number_stations))) + 
-            geom_point() +
+            geom_point(size = 1) +
             geom_smooth(mapping = aes(x = median_household_income, y = number_stations), method = 'lm', inherit.aes = FALSE) +
             labs(title = "Relationship Between Median Household Income of U.S. Counties \n and Number of EV Charging Stations",
                  subtitle = "Line of Best Fit Shown",
