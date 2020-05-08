@@ -17,17 +17,13 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                  tabPanel("Home",
                           h2("Welcome!", align = "center"),
                           p("Electric vehicles are the future — but for whom? This project examines the locations 
-                          of more than 28,000 EV charging stations in the U.S., comparing their frequency to the Census 
-                          demographics, such as median household income, of the county they are located in. On this 
+                          of more than 28,000 EV charging stations in the U.S., comparing their placement to the Census 
+                          demographics, such as median household income, of the county in which they are located. On this 
                           website, I present state-by-state maps of this relationship, as well as a statistical 
                             analysis of the nationwide data.", 
                             align = "center"),
-                          p("Though not reaching the level of statistical significance, I found a slight
-                            positive correlation between median income and charging stations in a county. 
-                            This means that, generally, counties with a higher median income receive a higher share
-                            of EV infrastructure investment.",
-                            align = "center"),
-                          p("This has important policy implications. Investment in EV infrastructure is investment
+                          p("I found a that, generally, counties with a higher median income have a greater number of EV
+                            charging stations. This has important policy implications. Investment in EV infrastructure is investment
                             in the future of transportation, and it should be going towards reducing inequality, not
                             exacerbating it. Passing over less wealthy areas for stations will leave residents there
                             without the flexibility to buy an electric vehicle.",
@@ -63,20 +59,20 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                               mainPanel(
                                   h4(textOutput("map_title")),
                                   leafletOutput("state_maps"),
-                                  h6("Source: U.S. Census 2010, American Communities Survey 2018, and 
+                                  h6("Sources: U.S. Census 2010, American Communities Survey 2018, and 
                                      National Renewable Energy Laboratory database")
                                   
                               )
                           )),
                           
                           tabPanel("Regression Model",
-                                       mainPanel(
                                                 h2("Graph of Relationship"),
                                              p("I ran a linear regression to explore the relationship
                                                         between median household income in a county and the number
                                                         of EV stations built there. The resulting best-fit line is
                                                         plotted."),
                                                         plotlyOutput("stats"),
+                                   h6("Sources: American Communities Survey 2018 and National Renewable Energy Laboratory database"),
                                               h2("Statistical Relationship"),
                                               h4("Linear Regression and Interpretation"),
                                                         tableOutput("stats_table"),
@@ -104,12 +100,12 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                              #      county. While this is strong('not statistically significant'**'), it does show a slight
                                              #      positive correlation."),
                                              #            tableOutput("stats_table_scaled"))
-                                       )),
+                                       ),
                           tabPanel("About",
                                    h2("Background"),
                                    p("As an avid electric vehicle driver, I'm always happy to find a charging station
                                      to make sure I have enough charge to make it to my destination. But looking for a station
-                                     tends to conjure up the image of a glitzy mall, not an highly impoverished neighborhood. Yet these
+                                     tends to conjure up the image of a glitzy mall, not a highly impoverished neighborhood. Yet these
                                      are where the stations need to be. Not only will this improve living conditions, help the 
                                      environment, and drive investment in these areas, the people living there could benefit most
                                      from these stations. They often have long commutes or cannot afford gas."), 
@@ -142,9 +138,13 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
 
 server <- function(input, output) {
     
+    # rendering the state by state maps with leaflet
+    
     output$state_maps <- renderLeaflet({
         
-        # load data in from rds in shiny folder
+        # load data in from each of the rds files in shiny folder. First one is the 
+        # ev stations and the rest are census data. It selects only the desired state
+        # based on user input.
         
         ev_base <- read_rds("clean-data/ev_data_sf.rds") %>% 
             filter(state.name == as.character(input$state))
@@ -164,12 +164,16 @@ server <- function(input, output) {
         education_base <- read_rds("clean-data/census_education_data.rds") %>% 
             filter(State == as.character(input$state))
         
+        # based on user selection of demographic attribute, chooses which dataset to feed to the map
+        
         state_data <- switch(input$attribute,
                         '1' = incomes_base,
                         '2' = rural_base,
                         '3' = cars_base,
                         '4' = pop_base,
-                        '5' = education_base)      
+                        '5' = education_base)  
+        
+        # based on user selection of demographic attribute, chooses the appropriate variable to display
         
         census_data <- switch(input$attribute, 
                        '1' = incomes_base$median_household_income,
@@ -178,6 +182,8 @@ server <- function(input, output) {
                        '4' = pop_base$total_pop,
                        '5' = education_base$percent_bachelors)
         
+        # setting color palette for the map polygons
+        
         pal <- colorNumeric("YlOrRd", 
                             domain = census_data)
         
@@ -185,11 +191,17 @@ server <- function(input, output) {
                                                      minZoom = 4,
                                                      maxZoom = 20)) %>%
             addProviderTiles("CartoDB") %>%
+            
+            # adds circles to denote placement of EV stations
+            
             addCircles(data = ev_base,
                       radius = 5,
                       fillColor = "black",
                       stroke = FALSE, 
                       fillOpacity = 1) %>% 
+            
+            # adds overlayed polygons with the census data based on user selection
+            
             addPolygons(data = state_data, 
                         weight = 0.5, 
                         color = "#000000",
@@ -198,6 +210,9 @@ server <- function(input, output) {
                         highlightOptions = highlightOptions(color = "white", weight = 2,
                                                             bringToFront = TRUE),
                         label = state_data$county) %>% 
+            
+            # adds the legend with varied text based on user selection
+            
             addLegend("bottomleft",
                       pal = pal,
                       values = census_data,
@@ -220,6 +235,9 @@ server <- function(input, output) {
         
     })
     
+    # this is the title for the state maps. It has to vary based on user selection of the
+    # state and the demographic attribute.
+    
     output$map_title <- renderText ({
         paste("Map of EV Chargers in", 
               input$state, 
@@ -232,6 +250,8 @@ server <- function(input, output) {
               "In Each County")
     })
     
+    # rendering the regression plotly
+    
     output$stats <- renderPlotly({
  
         reg_base <- read_rds("clean-data/regression.rds")  
@@ -242,16 +262,23 @@ server <- function(input, output) {
                                                       "Median Income:", median_household_income, "<br>",
                                                       "Stations:", number_stations))) + 
             geom_point(size = 1) +
+            
+            # the best fit line (geom_smooth) was having trouble due to the text added to the aes
+            # above to create labels. So I had it override the above data and put the aes in again
+            # here without the text.
+                
             geom_smooth(mapping = aes(x = median_household_income, y = number_stations), method = 'lm', inherit.aes = FALSE) +
-            labs(title = "Relationship Between Median Household Income of U.S. Counties \n and Number of EV Charging Stations",
+            labs(title = "Relationship Between Median Household Income of U.S. Counties and Number of EV Charging Stations",
                  subtitle = "Line of Best Fit Shown",
-                 caption = "American Communities Survey 2018 and \n National Renewable Energy Laboratory database"
+                 caption = "Sources: American Communities Survey 2018 and \n National Renewable Energy Laboratory database"
                  ) +
             xlab("Median Household Income") +
             ylab("Number of EV Charging Stations")
             
             ggplotly(plot, tooltip = c("text"))
     })
+    
+    # rendering the linear regression table
     
     output$stats_table <- renderTable({
         
@@ -267,12 +294,17 @@ server <- function(input, output) {
                 "Coefficient" = estimate,
                 "Lower Bound" = conf.low,
                 "Upper Bound" = conf.high) %>% 
+            
+            # because I only wanted to show the coefficient not the intercepts, 
+            # I only have it display the bottom line. 
+            
             tail(1)
         
         gt(reg_tidy)
         
     })
     
+    # this is code to render a scaled regression. Decided not to display this.
     
     # output$stats_table_scaled <- renderTable({
         
@@ -293,6 +325,8 @@ server <- function(input, output) {
        # gt(reg_tidy_scaled)
         
    # })
+    
+    # renders the static graph on the home page. 
     
     output$all_stations_graphic <- renderImage({
         list(src = "all_stations.png",
