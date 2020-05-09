@@ -13,18 +13,17 @@ library(plotly)
 library(leaflet)
 options(scipen=999)
 
-ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
+ui <- navbarPage(theme = shinytheme("yeti"), "EV Charging Stations",
                  tabPanel("Home",
                           h2("Welcome!", align = "center"),
-                          p("Electric vehicles are the future — but for whom? This project examines the locations 
-                          of more than 28,000 EV charging stations in the U.S., comparing their placement to the Census 
-                          demographics, such as median household income, of the county in which they are located. On this 
-                          website, I present state-by-state maps of this relationship, as well as a statistical 
-                            analysis of the nationwide data.", 
+                          p("Electric vehicles are the future — but for whom? This project examines more than 28,000 EV 
+                          charging stations in the U.S., comparing their locations to Census demographics, such as median 
+                          household income, of the county in which they are located. On this website, I present state-by-state 
+                          maps of this relationship, as well as a statistical analysis of the nationwide data.", 
                             align = "center"),
-                          p("I found a that, generally, counties with a higher median income have a greater number of EV
+                          p("I found that, in general, counties with a higher median income have a greater number of EV
                             charging stations. This has important policy implications. Investment in EV infrastructure is investment
-                            in the future of transportation, and it should be going towards reducing inequality, not
+                            in the future of transportation, and it should go towards reducing inequality, not
                             exacerbating it. Passing over less wealthy areas for stations will leave residents there
                             without the flexibility to buy an electric vehicle.",
                             align = "center"),
@@ -68,31 +67,30 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                           tabPanel("Regression Model",
                                                 h2("Graph of Relationship"),
                                              p("I ran a linear regression to explore the relationship
-                                                        between median household income in a county and the number
+                                                        between the median household income of a county and the number
                                                         of EV stations built there. The resulting best-fit line is
-                                                        plotted."),
+                                                        plotted. Hover over a dot to see which county it represents."),
                                                         plotlyOutput("stats"),
-                                   h6("Sources: American Communities Survey 2018 and National Renewable Energy Laboratory database"),
+                                   h6("Sources: American Communities Survey 2018 and National Renewable Energy Laboratory database."),
                                               h2("Statistical Relationship"),
                                               h4("Linear Regression and Interpretation"),
                                                         tableOutput("stats_table"),
-                                             p("This table shows my average coefficient, or the slope of the regression
-                                                  line, along with a 95% confidence interval. Because this was not a randomized
-                                                  experiment, we are not able to use this model to determine a causal relationship
-                                                  or predict the number of stations in any given county. There are so many possible confounding
+                                             p("This table shows my average coefficient, along with a 95% confidence interval. Because this was not a randomized
+                                                  experiment, we are not able to use this model to determine a causal relationship. There are so many possible confounding
                                                   variables that we cannot say for certain that a higher median household income is causing a county to have
                                                   more charging stations; in fact, it could even be the opposite, that a higher number
                                                   of stations is attracting wealthier people to the area and increasing the median household income."),
-                                             p("We can, however, use it to compare the number of stations in counties of differing income 
+                                             p("We can, however, use the model to compare the number of stations in counties of differing income 
                                                  levels. For example, using the coefficient from the table, we would expect a U.S. county with
-                                                 a median household income of $50,000 to have about __ charging stations, while a county with a median
-                                                 household income of $100,000 to have about __ charging stations. Even for counties with a less
+                                                 a median household income of $50,000 to have about 42 charging stations (with 95% confidence that the true
+                                                 number is between 36 and 48), while we would expect a county with a median household income $100,000 to have about
+                                                 84 charging stations (with 95% confidence that the true number is between 72 and 96). Even for counties with a less
                                                  stark difference in median income, such as $30,000 and $40,000, the county with a median income of 
-                                                 $40,000 would have approximately __ more charging stations."),
+                                                 $40,000 would be expected to have approximately nine more charging stations."),
                                              p("This does demonstrate that counties with a higher median income seem to be receiving more investment
                                                in electric vehicle infrastructure. While we cannot say for certain that the increase in EV investment
                                                is caused by the wealth of the county, it is an important consideration for public officials to be
-                                               aware of when determining how best to distribute public dollars for EV projects.")
+                                               aware of when determining how to distribute public dollars for EV projects.")
                                              # h4("Scaled Linear Regression"),
                                              #    p("This table shows the same figures, but with both axes scaled, so it demonstrates
                                              #      percent change. Here, the coefficient demonstrates that for each one percent increase
@@ -105,11 +103,10 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                    h2("Background"),
                                    p("As an avid electric vehicle driver, I'm always happy to find a charging station
                                      to make sure I have enough charge to make it to my destination. But looking for a station
-                                     tends to conjure up the image of a glitzy mall, not a highly impoverished neighborhood. Yet these
-                                     are where the stations need to be. Not only will this improve living conditions, help the 
-                                     environment, and drive investment in these areas, the people living there could benefit most
-                                     from these stations. They often have long commutes or cannot afford gas."), 
-                                   p("As investment in EV infrastructure continues to climb, policymakers need to remain congnizant of
+                                     tends to mean finding the nearest glitzy mall, not a highly impoverished neighborhood. Yet these
+                                     are where the stations need to be. This will improve living conditions, help the 
+                                     environment, and drive investment in these areas."), 
+                                   p("As investment in EV infrastructure continues to climb, policymakers need to remain cognizant of
                                      who is at the receiving end of these benefits, some of which come out of all of our taxdollars.
                                      My hope is that my project can shed light onto the current situation."),
                                    br(),
@@ -118,10 +115,10 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
                                      Laboratory's Developer Network. Though the database has locations of many different types of
                                      fuel stations, including Biodiesel (B20 and above), Compressed Natural Gas (CNG), Electric, 
                                      Ethanol (E85), Hydrogen, Liquefied Natural Gas (LNG), and Propane (LPG), I focused on electric, 
-                                     as that has been seeing significant investment in recent years. The data, which is updated 
+                                     as that has seen significant investment in recent years. The data, which is updated 
                                      regularly, comes from ", 
                                      a(href = 'https://developer.nrel.gov/docs/transportation/alt-fuel-stations-v1/', 'here', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
-                                    p("In addition, I drew demographic data from the U.S. Census Bureau's 2018 American Communities
+                                    p("I drew demographic data from the U.S. Census Bureau's 2010 Census and 2018 American Communities
                                       Survey, which is a limited sample version of the Census conducted each year. More information
                                       on the ACS survey can be found ",
                                     a(href = 'https://www.census.gov/programs-surveys/acs', 'here', .noWS = "outside"), '.', .noWS = c("after-begin", "before-end")),
@@ -138,7 +135,9 @@ ui <- navbarPage(theme = shinytheme("flatly"), "EV Charging Stations",
 
 server <- function(input, output) {
     
-    # rendering the state by state maps with leaflet
+    # rendering the state by state maps with leaflet. Note that some stations show
+    # up in the incorrect location due to errors in the NREL dataset. Also, I am not sure
+    # why when Alaska is selected, the map automatically zooms to Iceland. 
     
     output$state_maps <- renderLeaflet({
         
